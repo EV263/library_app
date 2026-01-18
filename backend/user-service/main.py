@@ -1,10 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from auth import create_access_token, verify_token
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, HTTPException
-from models import Student, Admin
 from database import get_connection
-
 
 app = FastAPI()
 
@@ -16,7 +13,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.post("/register")
 def register(name: str, email: str, role: str = "student"):
@@ -38,16 +34,12 @@ def register(name: str, email: str, role: str = "student"):
 
     return {"message": f"User {name} registered successfully with role {role}"}
 
-
-
-
-
 @app.post("/login")
 def login(email: str):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT name, role FROM users WHERE email=%s", (email,))
+    cursor.execute("SELECT id, name, email, role FROM users WHERE email=%s", (email,))
     user_data = cursor.fetchone()
 
     cursor.close()
@@ -56,8 +48,13 @@ def login(email: str):
     if not user_data:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Create JWT token with role
-    token = create_access_token({"sub": email, "role": user_data["role"]})
+    # Create JWT token with role + user_id
+    token = create_access_token({
+        "sub": user_data["email"],
+        "role": user_data["role"],
+        "user_id": user_data["id"]
+    })
+
     return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/protected")
@@ -65,4 +62,21 @@ def protected_route(token: str):
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return {"message": f"Hello {payload['sub']}, role: {payload['role']}"}
+
+    # Fetch user info from DB
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT id, name, email, role FROM users WHERE email=%s", (payload["sub"],))
+    user_data = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "message": f"Hello {user_data['email']}, role: {user_data['role']}",
+        "role": user_data["role"],
+        "user_id": user_data["id"],
+        "email": user_data["email"]
+    }
