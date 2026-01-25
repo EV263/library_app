@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    container_name: backend_service
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: Ankit261
+      DB_NAME: library_db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app_network
+
+  backend-books:
+    build:
+      context: ./backend/backend-books
+      dockerfile: Dockerfile
+    container_name: backend_books_service
+    ports:
+      - "8001:8001"
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: Ankit261
+      DB_NAME: library_db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - app_network
+
+  frontend:
+    build:
+      context: ./frontend/nextjs-app
+      dockerfile: Dockerfile
+    container_name: frontend_app
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_ANALYTICS_API_URL: http://localhost:8001
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

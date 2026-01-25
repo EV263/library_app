@@ -4,5 +4,5 @@ mysql-connector-python
 python-dotenv
 python-jose
 sqlalchemy
-mysqlclient
+
 pymysql
